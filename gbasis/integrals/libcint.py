@@ -3,14 +3,18 @@ Python C-API bindings for ``libcint`` GTO integrals library.
 
 """
 
-from ctypes import CDLL, c_int, c_double, c_void_p
+from ctypes import CDLL, cdll, c_int, c_double, c_void_p
+from ctypes.util import find_library
 
 from numpy.ctypeslib import load_library, ndpointer
 
 
-LIBCINT_PATH: str = '/CHANGE/ME/libcint/build'
+LIBCINT_USER_PATH: str = '/CHANGE/ME/libcint/build'
 r"""
-Path where ``libcint`` shared object library is located.
+User-specified path where ``libcint`` shared object library may be located.
+
+This module will look for ``libcint`` in the system's standard library paths first, and if the
+library is not found, will then look in this directory.
 
 """
 
@@ -94,14 +98,6 @@ POINT_NUC = 1
 GAUSSIAN_NUC = 2
 FRAC_CHARGE_NUC = 3
 
-#define bas(SLOT,I) bas[BAS_SLOTS * (I) + (SLOT)]
-def bas(bas_, slot, i):
-    return bas_[BAS_SLOTS * i + slot]
-
-#define atm(SLOT,I) atm[ATM_SLOTS * (I) + (SLOT)]
-def atm(atm_, slot, i):
-    return atm_[ATM_SLOTS * i + slot]
-
 
 class LibCInt:
     r"""
@@ -109,7 +105,17 @@ class LibCInt:
 
     """
 
-    _libcint: CDLL = load_library('libcint', LIBCINT_PATH)
+    try:
+        # Search for libcint in the system library paths
+        _libcint_sys_path = find_library('cint')
+        if _libcint_sys_path is None:
+            raise OSError
+        _libcint_cdll = cdll.LoadLibrary(_libcint_sys_path)
+    except OSError:
+        # If not found, try the user-specified path
+        _libcint_cdll = load_library('libcint', LIBCINT_USER_PATH)
+
+    _libcint: CDLL = _libcint_cdll
     r"""
     ``libcint`` shared object library.
 
